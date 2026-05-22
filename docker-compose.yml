@@ -4,7 +4,7 @@ services:
     environment:
       POSTGRES_USER: rails
       POSTGRES_PASSWORD: rails
-    ports: 
+    ports:
       - '5433:5432'
     volumes:
       - rails-postgres:/var/lib/postgresql/data
@@ -29,20 +29,20 @@ services:
   rails:
     build:
       context: .
-      dockerfile: Dockerfile.rails
+      dockerfile: Dockerfile
     image: rails:latest
     volumes:
       - rails:/app
     environment:
-      RAILS_ENV: ${RAILS_ENV}
-      DB_HOST: ${DB_HOST}
-      DB_USERNAME: ${DB_USERNAME}
-      DB_DATABASE: ${DB_DATABASE}
-      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
-      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
-      AWS_SESSION_TOKEN: ${AWS_SESSION_TOKEN}
-      AWS_REGION: ${AWS_REGION}
-    command: ["/bin/bash","-c","rails server -b 0.0.0.0"]
+      RAILS_ENV: ${RAILS_ENV:-development}
+      DB_HOST: ${DB_HOST:-postgres}
+      DB_USERNAME: ${DB_USERNAME:-rails}
+      DB_DATABASE: ${DB_DATABASE:-app_development}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
+      AWS_SESSION_TOKEN: ${AWS_SESSION_TOKEN:-}
+      AWS_REGION: ${AWS_REGION:-ap-southeast-2}
+    command: ["/bin/bash", "-c", "rails db:create db:migrate && rails server -b 0.0.0.0"]
     ports:
       - '3000:3000'
     depends_on:
