@@ -37,8 +37,6 @@ RUN rails new . --database=postgresql --skip-bundle --force
 COPY Gemfile ./Gemfile
 RUN bundle install
 
-RUN cp config/environments/development.rb config/environments/release.rb
-
 COPY rds_iam_auth.rb config/initializers/rds_iam_auth.rb
 COPY database.yml ./config/database.yml
 

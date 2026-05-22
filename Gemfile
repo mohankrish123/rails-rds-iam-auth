@@ -63,7 +63,6 @@ group :test do
   gem "selenium-webdriver"
 end
 
-group :release do
-  # For connecting to the RDS instance using IAM authentication
+group :production do
   gem "pg-aws_rds_iam"
 end

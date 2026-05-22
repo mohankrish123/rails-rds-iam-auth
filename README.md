@@ -33,16 +33,16 @@ The [`pg-aws_rds_iam`](https://github.com/haines/pg-aws_rds_iam) gem hooks into 
 | File | Purpose |
 |---|---|
 | `rds_iam_auth.rb` | Rails initialiser - registers a custom auth token generator using the application's AWS credentials |
-| `database.yml` | Configures the `release` environment to use `aws_rds_iam_auth_token_generator: custom` instead of a static password |
-| `Gemfile` | Includes `pg-aws_rds_iam` gem in the `:release` group |
+| `database.yml` | Configures the `production` environment to use `aws_rds_iam_auth_token_generator: custom` instead of a static password |
+| `Gemfile` | Includes `pg-aws_rds_iam` gem in the `:production` group |
 | `Dockerfile` | Multi-stage build with AWS CLI and all gems pre-installed |
 
 ### database.yml: local vs RDS
 
-The `development` environment connects to a local PostgreSQL container with static credentials. The `release` environment connects to RDS with IAM authentication and enforces SSL:
+The `development` environment connects to a local PostgreSQL container with static credentials. The `production` environment connects to RDS with IAM authentication and enforces SSL:
 
 ```yaml
-release:
+production:
   <<: *default
   database: <%= ENV.fetch("DB_DATABASE", "postgres") %>
   username: <%= ENV.fetch("DB_USERNAME", "rails") %>
@@ -51,18 +51,17 @@ release:
   aws_rds_iam_auth_token_generator: custom
 ```
 
-The `password` field is intentionally omitted in the `release` block. The gem generates a token on each connection attempt.
+The `password` field is intentionally omitted in the `production` block. The gem generates a token on each connection attempt.
 
 ### rds_iam_auth.rb: the initialiser
 
-The initialiser only activates in the `release` environment. It reads AWS credentials from environment variables (which come from the task role, instance profile, or IRSA) and registers a token generator:
+The initialiser only activates in the `production` environment. It uses the AWS SDK's default credential chain — which automatically resolves credentials from ECS task roles, IRSA, EC2 instance profiles, or environment variables — and registers a token generator:
 
 ```ruby
-if Rails.env.release?
+if Rails.env.production?
   PG::AWS_RDS_IAM.auth_token_generators.add :custom do
     PG::AWS_RDS_IAM::AuthTokenGenerator.new(
-      credentials: cred,
-      region: ENV['AWS_REGION'])
+      region: ENV.fetch('AWS_REGION', 'ap-southeast-2'))
   end
 end
 ```
@@ -84,38 +83,27 @@ The `:custom` name matches the `aws_rds_iam_auth_token_generator: custom` value 
 Local development uses the PostgreSQL container with static credentials (no AWS setup needed):
 
 ```bash
-docker compose up --build
+RAILS_ENV=development docker compose up --build
 ```
 
 The Rails app will be available at `http://localhost:3000`.
 
 ## Running against RDS
 
-To test IAM authentication against a real RDS instance:
+To connect to a real RDS instance with IAM authentication:
 
 ```bash
-export RAILS_ENV=release
 export DB_HOST=<your-rds-endpoint>
 export DB_USERNAME=<your-iam-db-user>
 export DB_DATABASE=<your-database-name>
 export AWS_REGION=ap-southeast-2
 
-# AWS credentials - these come from your IAM role in production,
-# but for local testing you can export them manually
-export AWS_ACCESS_KEY_ID=<your-key>
-export AWS_SECRET_ACCESS_KEY=<your-secret>
-export AWS_SESSION_TOKEN=<your-token>
-
 docker compose up --build
 ```
 
-In production (ECS, EKS, EC2), the AWS credential environment variables are provided automatically by the task role, IRSA, or instance profile. You only need to set `RAILS_ENV`, `DB_HOST`, `DB_USERNAME`, `DB_DATABASE`, and `AWS_REGION`.
+The AWS SDK's default credential chain automatically resolves credentials from the ECS task role, IRSA, or instance profile — no explicit AWS credential variables needed.
 
 ## Design decisions
-
-### Why a separate `release` environment instead of `production`?
-
-Rails ships with `development`, `test`, and `production` environments. Adding `release` lets us demonstrate IAM auth configuration without modifying the standard production setup. In a real deployment, you would either use `production` directly or create an environment name that matches your deployment stage.
 
 ### Why `pg-aws_rds_iam` instead of generating tokens manually?
 

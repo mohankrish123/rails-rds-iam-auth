@@ -14,11 +14,10 @@ development:
   database: app_development
 
 
-release:
+production:
   <<: *default
-  database: <%= ENV.fetch("DB_DATABASE", "postgres") %> 
+  database: <%= ENV.fetch("DB_DATABASE", "postgres") %>
   username: <%= ENV.fetch("DB_USERNAME", "rails") %>
-  password: <%= ENV.fetch("DB_PASSWORD", "rails") %>
   host: <%= ENV.fetch("DB_HOST", "postgres") %>
   sslmode: require
   aws_rds_iam_auth_token_generator: custom
